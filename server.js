@@ -480,25 +480,29 @@ app.post('/webhook/wa', async (req, res) => {
   console.log(`WA [${senderName}${isGroup?'/GROUP':''}]: "${(message||'').substring(0,60)}"`);
   try {
     if (isGroup) {
-  if (!isBotMentioned(message)) return;
-  
-  // 🔴 Clean SEMUA mention (by name & by nomor)
-  let cleanMsg = message.replace(new RegExp(`@${BOT_MENTION}`, 'gi'), '').trim();
-  
-  // Clean juga mention by nomor (format @62xxx atau @0xxx)
-  cleanMsg = cleanMsg.replace(/@[\d\s\-]+/g, '').trim();
-  
-  // Validasi
-  if (!cleanMsg) {
-    await sendWA(sender, 'Halo! Ada yang bisa dibantu? 😊', member ? [member] : []);
-    return;
+      if (!isBotMentioned(message)) return;
+      
+      let cleanMsg = message.replace(new RegExp(`@${BOT_MENTION}`, 'gi'), '').trim();
+      cleanMsg = cleanMsg.replace(/@[\d\s\-]+/g, '').trim();
+      
+      if (!cleanMsg) {
+        await sendWA(sender, 'Halo! Ada yang bisa dibantu? 😊', member ? [member] : []);
+        return;
+      }
+      
+      const mentionPrefix = member ? `@${member} ` : '';
+      const mentionArr    = member ? [member] : [];
+      await sendWA(sender, mentionPrefix + await callClaude(senderId, senderName, cleanMsg), mentionArr);
+      return;
+    }
+    
+    // 🔴 TAMBAH BAGIAN INI — untuk private chat
+    await sendWA(sender, await callClaude(senderId, senderName, message));
+  } catch (e) { 
+    console.error('WA error:', e.message); 
+    await sendWA(sender, 'Maaf, error: ' + e.message); 
   }
-  
-  const mentionPrefix = member ? `@${member} ` : '';
-  const mentionArr    = member ? [member] : [];
-  await sendWA(sender, mentionPrefix + await callClaude(senderId, senderName, cleanMsg), mentionArr);
-  return;
-}
+});
 
 // ─── SCHEDULER — Pagi summary semua cabang ────────────────
 cron.schedule('0 8 * * *', async () => {
